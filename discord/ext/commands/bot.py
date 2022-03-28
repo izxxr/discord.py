@@ -80,7 +80,6 @@ if TYPE_CHECKING:
     _Prefix = Union[Iterable[str], str]
     _PrefixCallable = MaybeCoroFunc[[BotT, Message], _Prefix]
     PrefixType = Union[_Prefix, _PrefixCallable[BotT]]
-
 __all__ = (
     'when_mentioned',
     'when_mentioned_or',
@@ -179,10 +178,8 @@ class BotBase(GroupMixin[None]):
 
         if self.owner_id and self.owner_ids:
             raise TypeError('Both owner_id and owner_ids are set.')
-
         if self.owner_ids and not isinstance(self.owner_ids, collections.abc.Collection):
             raise TypeError(f'owner_ids must be a collection not {self.owner_ids.__class__!r}')
-
         if help_command is _default:
             self.help_command = DefaultHelpCommand()
         else:
@@ -204,13 +201,11 @@ class BotBase(GroupMixin[None]):
                 await self.unload_extension(extension)
             except Exception:
                 pass
-
         for cog in tuple(self.__cogs):
             try:
                 await self.remove_cog(cog)
             except Exception:
                 pass
-
         await super().close()  # type: ignore
 
     async def on_command_error(self, context: Context[BotT], exception: errors.CommandError, /) -> None:
@@ -229,15 +224,12 @@ class BotBase(GroupMixin[None]):
         """
         if self.extra_events.get('on_command_error', None):
             return
-
         command = context.command
         if command and command.has_error_handler():
             return
-
         cog = context.cog
         if cog and cog.has_error_handler():
             return
-
         print(f'Ignoring exception in command {context.command}:', file=sys.stderr)
         traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
 
@@ -371,7 +363,6 @@ class BotBase(GroupMixin[None]):
 
         if len(data) == 0:
             return True
-
         # type-checker doesn't distinguish between functions and methods
         return await discord.utils.async_all(f(ctx) for f in data)  # type: ignore
 
@@ -449,7 +440,6 @@ class BotBase(GroupMixin[None]):
         """
         if not asyncio.iscoroutinefunction(coro):
             raise TypeError('The pre-invoke hook must be a coroutine.')
-
         self._before_invoke = coro
         return coro
 
@@ -486,7 +476,6 @@ class BotBase(GroupMixin[None]):
         """
         if not asyncio.iscoroutinefunction(coro):
             raise TypeError('The post-invoke hook must be a coroutine.')
-
         self._after_invoke = coro
         return coro
 
@@ -522,7 +511,6 @@ class BotBase(GroupMixin[None]):
 
         if not asyncio.iscoroutinefunction(func):
             raise TypeError('Listeners must be coroutines')
-
         if name in self.extra_events:
             self.extra_events[name].append(func)
         else:
@@ -661,7 +649,6 @@ class BotBase(GroupMixin[None]):
 
         if not isinstance(cog, Cog):
             raise TypeError('cogs must derive from Cog')
-
         cog_name = cog.__cog_name__
         existing = self.__cogs.get(cog_name)
 
@@ -669,10 +656,8 @@ class BotBase(GroupMixin[None]):
             if not override:
                 raise discord.ClientException(f'Cog named {cog_name!r} already loaded')
             await self.remove_cog(cog_name, guild=guild, guilds=guilds)
-
         if isinstance(cog, app_commands.Group):
             self.__tree.add_command(cog, override=override, guild=guild, guilds=guilds)
-
         cog = await cog._inject(self, override=override, guild=guild, guilds=guilds)
         self.__cogs[cog_name] = cog
 
@@ -751,11 +736,9 @@ class BotBase(GroupMixin[None]):
         cog = self.__cogs.pop(name, None)
         if cog is None:
             return
-
         help_command = self._help_command
         if help_command and help_command.cog is cog:
             help_command.cog = None
-
         guild_ids = _retrieve_guild_ids(cog, guild, guilds)
         if isinstance(cog, app_commands.Group):
             if guild_ids is None:
@@ -763,7 +746,6 @@ class BotBase(GroupMixin[None]):
             else:
                 for guild_id in guild_ids:
                     self.__tree.remove_command(name, guild=discord.Object(guild_id))
-
         await cog._eject(self, guild_ids=guild_ids)
 
         return cog
@@ -781,24 +763,20 @@ class BotBase(GroupMixin[None]):
         for cogname, cog in self.__cogs.copy().items():
             if _is_submodule(name, cog.__module__):
                 await self.remove_cog(cogname)
-
         # remove all the commands from the module
         for cmd in self.all_commands.copy().values():
             if cmd.module is not None and _is_submodule(name, cmd.module):
                 if isinstance(cmd, GroupMixin):
                     cmd.recursively_remove_all_commands()
                 self.remove_command(cmd.name)
-
         # remove all the listeners from the module
         for event_list in self.extra_events.copy().values():
             remove = []
             for index, event in enumerate(event_list):
                 if event.__module__ is not None and _is_submodule(name, event.__module__):
                     remove.append(index)
-
             for index in reversed(remove):
                 del event_list[index]
-
         # remove all relevant application commands from the tree
         self.__tree._remove_with_module(name)
 
@@ -829,13 +807,11 @@ class BotBase(GroupMixin[None]):
         except Exception as e:
             del sys.modules[key]
             raise errors.ExtensionFailed(key, e) from e
-
         try:
             setup = getattr(lib, 'setup')
         except AttributeError:
             del sys.modules[key]
             raise errors.NoEntryPointError(key)
-
         try:
             await setup(self)
         except Exception as e:
@@ -898,11 +874,9 @@ class BotBase(GroupMixin[None]):
         name = self._resolve_name(name, package)
         if name in self.__extensions:
             raise errors.ExtensionAlreadyLoaded(name)
-
         spec = importlib.util.find_spec(name)
         if spec is None:
             raise errors.ExtensionNotFound(name)
-
         await self._load_from_module_spec(spec, name)
 
     async def unload_extension(self, name: str, *, package: Optional[str] = None) -> None:
@@ -948,7 +922,6 @@ class BotBase(GroupMixin[None]):
         lib = self.__extensions.get(name)
         if lib is None:
             raise errors.ExtensionNotLoaded(name)
-
         await self._remove_module_references(lib.__name__)
         await self._call_module_finalizers(lib, name)
 
@@ -991,9 +964,9 @@ class BotBase(GroupMixin[None]):
         lib = self.__extensions.get(name)
         if lib is None:
             raise errors.ExtensionNotLoaded(name)
-
         # get the previous module states from sys modules
         # fmt: off
+
         modules = {
             name: module
             for name, module in sys.modules.items()
@@ -1084,7 +1057,6 @@ class BotBase(GroupMixin[None]):
         if callable(prefix):
             # self will be a Bot or AutoShardedBot
             ret = await discord.utils.maybe_coroutine(prefix, self, message)  # type: ignore
-
         if not isinstance(ret, str):
             try:
                 ret = list(ret)  # type: ignore
@@ -1093,15 +1065,12 @@ class BotBase(GroupMixin[None]):
                 # replace it with our own error if that's the case.
                 if isinstance(ret, collections.abc.Iterable):
                     raise
-
                 raise TypeError(
                     "command_prefix must be plain string, iterable of strings, or callable "
                     f"returning either of these, not {ret.__class__.__name__}"
                 )
-
             if not ret:
                 raise ValueError("Iterable command_prefix must contain at least one prefix")
-
         return ret
 
     @overload
@@ -1163,13 +1132,11 @@ class BotBase(GroupMixin[None]):
         """
         if cls is MISSING:
             cls = Context  # type: ignore
-
         view = StringView(message.content)
         ctx = cls(prefix=None, view=view, bot=self, message=message)
 
         if message.author.id == self.user.id:  # type: ignore
             return ctx
-
         prefix = await self.get_prefix(message)
         invoked_prefix = prefix
 
@@ -1184,13 +1151,11 @@ class BotBase(GroupMixin[None]):
                     invoked_prefix = discord.utils.find(view.skip_string, prefix)
                 else:
                     return ctx
-
             except TypeError:
                 if not isinstance(prefix, list):
                     raise TypeError(
                         "get_prefix must return either a string or a list of string, " f"not {prefix.__class__.__name__}"
                     )
-
                 # It's possible a bad command_prefix got us here.
                 for value in prefix:
                     if not isinstance(value, str):
@@ -1198,13 +1163,10 @@ class BotBase(GroupMixin[None]):
                             "Iterable command_prefix or list returned from get_prefix must "
                             f"contain only strings, not {value.__class__.__name__}"
                         )
-
                 # Getting here shouldn't happen
                 raise
-
         if self.strip_after_prefix:
             view.skip_ws()
-
         invoker = view.get_word()
         ctx.invoked_with = invoker
         # type-checker fails to narrow invoked_prefix type.
@@ -1270,7 +1232,6 @@ class BotBase(GroupMixin[None]):
         """
         if message.author.bot:
             return
-
         ctx = await self.get_context(message)
         # the type of the invocation context's bot attribute will be correct
         await self.invoke(ctx)  # type: ignore
@@ -1288,9 +1249,9 @@ class Bot(BotBase, discord.Client):
 
     This class also subclasses :class:`.GroupMixin` to provide the functionality
     to manage commands.
-    
+
     Unlike :class:`discord.Client`, This class does not require manually setting
-    a :class:`~discord.app_commands.CommandTree` and is automatically set upon 
+    a :class:`~discord.app_commands.CommandTree` and is automatically set upon
     instantiating the class.
 
     Attributes
