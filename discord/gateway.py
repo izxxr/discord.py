@@ -321,6 +321,7 @@ class DiscordWebSocket:
         # ws related stuff
         self.session_id: Optional[str] = None
         self.sequence: Optional[int] = None
+        self.resume_gateway_url: Optional[str] = None
         self._zlib: zlib._Decompress = zlib.decompressobj()
         self._buffer: bytearray = bytearray()
         self._close_code: Optional[int] = None
@@ -533,6 +534,7 @@ class DiscordWebSocket:
 
                 self.sequence = None
                 self.session_id = None
+                self.resume_gateway_url = None
                 _log.info('Shard ID %s session has been invalidated.', self.shard_id)
                 await self.close(code=1000)
                 raise ReconnectWebSocket(self.shard_id, resume=False)
@@ -541,8 +543,12 @@ class DiscordWebSocket:
             return
 
         if event == 'READY':
+            # Circular import
+            from .http import INTERNAL_API_VERSION
+
             self.sequence = msg['s']
             self.session_id = data['session_id']
+            self.resume_gateway_url = data['resume_gateway_url'] + f"?encoding=json&v={INTERNAL_API_VERSION}&compress=zlib-stream"
             _log.info('Shard ID %s has connected to Gateway (Session ID: %s).', self.shard_id, self.session_id)
 
         elif event == 'RESUMED':

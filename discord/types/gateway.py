@@ -68,6 +68,7 @@ class ReadyEvent(TypedDict):
     session_id: str
     shard: List[int]  # shard_id, num_shards
     application: GatewayAppInfo
+    resume_gateway_url: str
 
 
 ResumedEvent = Literal[None]

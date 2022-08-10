@@ -186,6 +186,7 @@ class Shard:
                 shard_id=self.id,
                 session=self.ws.session_id,
                 sequence=self.ws.sequence,
+                gateway=self.ws.resume_gateway_url,
             )
             self.ws = await asyncio.wait_for(coro, timeout=60.0)
         except self._handled_exceptions as e:
